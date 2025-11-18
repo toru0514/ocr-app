@@ -57,9 +57,9 @@ export function DocumentEditor({ document }: Props) {
           value={status}
           onChange={(event) => setStatus(event.target.value as Document['status'])}
         >
-          <option value="draft">draft</option>
-          <option value="in_review">in_review</option>
-          <option value="confirmed">confirmed</option>
+          <option value="draft">下書き</option>
+          <option value="in_review">レビュー中</option>
+          <option value="confirmed">確定</option>
         </select>
       </div>
       <button
@@ -67,7 +67,7 @@ export function DocumentEditor({ document }: Props) {
         className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         disabled={saving}
       >
-        {saving ? '保存中...' : '保存'}
+        {saving ? '保存中…' : '保存'}
       </button>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </form>

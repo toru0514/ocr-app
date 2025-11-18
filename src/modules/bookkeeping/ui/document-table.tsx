@@ -27,7 +27,7 @@ export function DocumentTable({ documents }: Props) {
           {documents.map((doc) => (
             <tr key={doc.id}>
               <td className="px-4 py-2 font-medium">{doc.originalName}</td>
-              <td className="px-4 py-2">{doc.status}</td>
+              <td className="px-4 py-2">{statusLabel(doc.status)}</td>
               <td className="px-4 py-2">{doc.entries.length}</td>
               <td className="px-4 py-2">
                 <Link className="text-primary underline" href={`/documents/${doc.id}`}>
@@ -40,4 +40,17 @@ export function DocumentTable({ documents }: Props) {
       </table>
     </div>
   );
+}
+
+function statusLabel(status: Document['status']) {
+  switch (status) {
+    case 'draft':
+      return '下書き';
+    case 'in_review':
+      return 'レビュー中';
+    case 'confirmed':
+      return '確定';
+    default:
+      return status;
+  }
 }

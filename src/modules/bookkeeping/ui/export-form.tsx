@@ -2,18 +2,39 @@
 
 import { useState } from 'react';
 
-interface Props {
-  onExport: (range: { from: string; to: string }) => Promise<void> | void;
-}
+type ExportResult = {
+  csv: string;
+  issues: string[];
+};
 
-export function ExportForm({ onExport }: Props) {
+export function ExportForm() {
   const [range, setRange] = useState({ from: '', to: '' });
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [result, setResult] = useState<ExportResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
-    await onExport(range);
+    setError(null);
+
+    const response = await fetch('/api/export', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(range),
+    });
+
+    if (!response.ok) {
+      const json = await response.json().catch(() => ({}));
+      setError(json.error ?? 'CSV 生成に失敗しました');
+      setStatus('error');
+      return;
+    }
+
+    const json = (await response.json()) as ExportResult;
+    setResult(json);
     setStatus('success');
   }
 
@@ -46,9 +67,29 @@ export function ExportForm({ onExport }: Props) {
         className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
         disabled={status === 'loading'}
       >
-        {status === 'loading' ? 'CSV生成中…' : 'CSVエクスポート'}
+        {status === 'loading' ? 'CSV生成中…' : 'CSV下書きを作成'}
       </button>
-      {status === 'success' ? <p className="text-sm text-green-600">エクスポートが完了しました。</p> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {result ? (
+        <div className="space-y-3 rounded-lg border p-4">
+          <div>
+            <h2 className="text-base font-semibold">整合性チェック</h2>
+            {result.issues.length === 0 ? (
+              <p className="text-sm text-green-600">問題は見つかりませんでした。</p>
+            ) : (
+              <ul className="list-disc pl-5 text-sm text-red-600">
+                {result.issues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <h2 className="text-base font-semibold">CSV（下書き）</h2>
+            <textarea className="mt-2 w-full rounded border px-3 py-2 text-xs" rows={8} value={result.csv} readOnly />
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

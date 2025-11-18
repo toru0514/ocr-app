@@ -3,11 +3,12 @@ import { documentService } from '@/modules/bookkeeping/infra';
 import { DocumentEditor } from '@/modules/bookkeeping/ui/document-editor';
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function DocumentDetailPage({ params }: Props) {
-  const document = await documentService.getDocument(params.id);
+  const { id } = await params;
+  const document = await documentService.getDocument(id);
 
   if (!document) {
     notFound();
