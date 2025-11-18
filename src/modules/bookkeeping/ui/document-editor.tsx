@@ -1,24 +1,42 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Document } from '../domain/types';
 
 interface Props {
   document: Document;
-  onSave?: (document: Document) => Promise<void> | void;
 }
 
-export function DocumentEditor({ document, onSave }: Props) {
+export function DocumentEditor({ document }: Props) {
+  const router = useRouter();
   const [note, setNote] = useState(document.note ?? '');
   const [status, setStatus] = useState(document.status);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (onSave) {
-      await onSave({ ...document, note, status });
+    setSaving(true);
+    setMessage(null);
+
+    const response = await fetch(`/api/documents/${document.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ note, status }),
+    });
+
+    if (response.ok) {
+      setMessage('保存しました');
+      router.refresh();
     } else {
-      console.info('onSave handler is not provided. Mock保存: ', { note, status });
+      const json = await response.json().catch(() => ({}));
+      setMessage(json.error ?? '保存に失敗しました');
     }
+
+    setSaving(false);
   }
 
   return (
@@ -44,9 +62,14 @@ export function DocumentEditor({ document, onSave }: Props) {
           <option value="confirmed">confirmed</option>
         </select>
       </div>
-      <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-        保存
+      <button
+        type="submit"
+        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+        disabled={saving}
+      >
+        {saving ? '保存中...' : '保存'}
       </button>
+      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </form>
   );
 }

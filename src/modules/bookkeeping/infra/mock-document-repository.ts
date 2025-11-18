@@ -56,6 +56,29 @@ export class MockDocumentRepository implements DocumentRepository {
       this.documents[idx] = document;
     }
   }
+
+  async createDocument(input: {
+    originalName: string;
+    storagePath: string;
+    source: Document['source'];
+    note?: string;
+    createdBy: string;
+    status?: Document['status'];
+  }) {
+    const doc: Document = {
+      id: crypto.randomUUID(),
+      originalName: input.originalName,
+      storagePath: input.storagePath,
+      status: input.status ?? 'draft',
+      source: input.source,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      note: input.note,
+      entries: [],
+    };
+    this.documents.unshift(doc);
+    return doc;
+  }
 }
 
 export class MockExportRepository implements ExportRepository {

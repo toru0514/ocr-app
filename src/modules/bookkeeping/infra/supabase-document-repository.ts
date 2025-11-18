@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { Document, Entry } from '../domain/types';
+import { Document, DocumentStatus, Entry } from '../domain/types';
 import { DocumentRepository } from '../application/repositories';
 
 type EntryRow = {
@@ -96,5 +96,35 @@ export class SupabaseDocumentRepository implements DocumentRepository {
     if (error) {
       throw new Error(`documents.saveDocument error: ${error.message}`);
     }
+  }
+
+  async createDocument(input: {
+    originalName: string;
+    storagePath: string;
+    source: Document['source'];
+    note?: string;
+    createdBy: string;
+    status?: DocumentStatus;
+  }): Promise<Document> {
+    const payload = {
+      original_name: input.originalName,
+      storage_path: input.storagePath,
+      source: input.source,
+      note: input.note ?? null,
+      status: input.status ?? 'draft',
+      created_by: input.createdBy,
+    };
+
+    const { data, error } = await this.client
+      .from('documents')
+      .insert(payload)
+      .select('*, entries(*)')
+      .single();
+
+    if (error) {
+      throw new Error(`documents.createDocument error: ${error.message}`);
+    }
+
+    return mapDocument(data as DocumentRow);
   }
 }

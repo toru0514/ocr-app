@@ -1,5 +1,6 @@
 import { documentService } from '@/modules/bookkeeping/infra';
 import { DocumentTable } from '@/modules/bookkeeping/ui/document-table';
+import { DocumentUploader } from '@/modules/bookkeeping/ui/document-uploader';
 
 export const metadata = {
   title: 'ドキュメント一覧',
@@ -14,6 +15,7 @@ export default async function DocumentsPage() {
         <h1 className="text-2xl font-semibold">アップロード済みドキュメント</h1>
         <p className="text-sm text-muted-foreground">Phase A の要件を満たすためのプレースホルダー実装です。</p>
       </div>
+      <DocumentUploader />
       <DocumentTable documents={documents} />
     </main>
   );

@@ -16,4 +16,8 @@ export class DocumentService {
     await this.repository.saveDocument(document);
     return document;
   }
+
+  createDocument(input: Parameters<DocumentRepository['createDocument']>[0]) {
+    return this.repository.createDocument(input);
+  }
 }
