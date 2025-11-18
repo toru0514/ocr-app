@@ -1,8 +1,9 @@
 import { DocumentService } from '../application/documents';
 import { ExportService } from '../application/export';
-import { MockDocumentRepository, MockExportRepository } from './mock-document-repository';
+import { SupabaseDocumentRepository } from './supabase-document-repository';
+import { MockExportRepository } from './mock-document-repository';
 
-const documentRepository = new MockDocumentRepository();
+const documentRepository = new SupabaseDocumentRepository();
 const exportRepository = new MockExportRepository();
 
 export const documentService = new DocumentService(documentRepository);

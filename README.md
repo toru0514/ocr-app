@@ -648,8 +648,8 @@ app/
 - [x] **A4-03 ダウンロード UI** — 期間指定フォーム、進捗表示、完了通知、履歴（いつ誰が出力したか）を UI レベルでまとめる。
 
 #### Phase A 実装ステップ
-- [x] **A-実装-01** Supabase の `documents` / `entries` テーブルを作成し、マイグレーション・環境変数（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`）を設定する。
-- [ ] **A-実装-02** Mock リポジトリを Supabase 実装に置き換え、`/documents` / `/documents/[id]` で実データを表示できるようにする。
+- [x] **A-実装-01** Supabase の `documents` / `entries` テーブルを作成し、マイグレーション・環境変数（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`）を設定する。
+- [x] **A-実装-02** Mock リポジトリを Supabase 実装に置き換え、`/documents` / `/documents/[id]` で実データを表示できるようにする。
 - [ ] **A-実装-03** `DocumentEditor` からステータス・メモを保存する API / アクションを実装する。
 - [ ] **A-実装-04** PDF アップロード UI と Supabase Storage 連携（モック可）を `/documents` に組み込む。
 - [ ] **A-実装-05** CSV 下書き生成（モック可）と `/export` 画面の整合性チェック表示を実装する。
