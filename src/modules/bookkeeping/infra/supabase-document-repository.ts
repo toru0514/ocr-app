@@ -8,7 +8,8 @@ type EntryRow = {
   date: string;
   vendor: string;
   account_title: string;
-  amount: number;
+  amount_in: number;
+  amount_out: number;
   tax_category: Entry['taxCategory'];
   description: string | null;
   status?: Entry['status'];
@@ -33,7 +34,8 @@ function mapEntry(row: EntryRow): Entry {
     date: row.date,
     vendor: row.vendor,
     accountTitle: row.account_title,
-    amount: row.amount,
+    amountIn: row.amount_in,
+    amountOut: row.amount_out,
     taxCategory: row.tax_category,
     description: row.description ?? undefined,
     status: row.status ?? 'draft',

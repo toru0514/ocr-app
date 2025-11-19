@@ -38,6 +38,32 @@ export function ExportForm() {
     setStatus('success');
   }
 
+  async function handleDownload() {
+    if (!result?.csv) return;
+    const response = await fetch('/api/export/download', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(range),
+    });
+
+    if (!response.ok) {
+      const json = await response.json().catch(() => ({}));
+      setError(json.error ?? 'CSV ダウンロードに失敗しました');
+      setStatus('error');
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `entries_${range.from}_${range.to}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="flex gap-3">
@@ -62,13 +88,24 @@ export function ExportForm() {
           />
         </div>
       </div>
-      <button
-        type="submit"
-        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-        disabled={status === 'loading'}
-      >
-        {status === 'loading' ? 'CSV生成中…' : 'CSV下書きを作成'}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          disabled={status === 'loading'}
+        >
+          {status === 'loading' ? 'CSV生成中…' : 'CSV下書きを作成'}
+        </button>
+        {result?.csv ? (
+          <button
+            type="button"
+            className="rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-60"
+            onClick={handleDownload}
+          >
+            CSVファイルをダウンロード
+          </button>
+        ) : null}
+      </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {result ? (
         <div className="space-y-3 rounded-lg border p-4">

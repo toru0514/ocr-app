@@ -7,7 +7,8 @@ export interface Entry {
   date: string; // ISO date string
   vendor: string;
   accountTitle: string;
-  amount: number;
+  amountIn: number;
+  amountOut: number;
   taxCategory: 'standard_10' | 'reduced_8' | 'exempt';
   description?: string;
   status: DocumentStatus;
