@@ -518,7 +518,8 @@ date,amount,vendor,account_title,tax_category,description,document_id
 | `date` | `YYYY-MM-DD` 形式。未来日不可（当年末＋1カ月まで許容）。空欄禁止。 | 「取引日は必須です」「未来日の取引は登録できません」 |
 | `vendor` | 1〜50 文字。半角/全角混在可。先頭末尾の空白は自動トリム。 | 「相手先は 50 文字以内で入力してください」 |
 | `account_title` | マスター内の値のみ選択可。未選択禁止。 | 「勘定科目を選択してください」 |
-| `amount` | 正の整数。最大 1,000,000,000（9 桁）まで。数値のみ。 | 「金額は 1 以上の整数で入力してください」「金額が大きすぎます」 |
+| `amount_in` | 正の整数。最大 1,000,000,000（9 桁）。0 も可（入金が無い場合は 0）。 | 「入金金額は 0 以上の整数で入力してください」「金額が大きすぎます」 |
+| `amount_out` | 正の整数。最大 1,000,000,000（9 桁）。0 も可（出金が無い場合は 0）。 | 「出金金額は 0 以上の整数で入力してください」「金額が大きすぎます」 |
 | `tax_category` | `standard_10`,`reduced_8`,`exempt` のいずれか。未選択禁止。 | 「税区分を選択してください」 |
 | `description` | 0〜100 文字。改行可。 | 「摘要は 100 文字以内で入力してください」 |
 | `source` | `amazon`,`rakuten`,`manual`,`other` のいずれか。アップロード時に設定し、後から変更可能。 | - |
@@ -531,15 +532,15 @@ date,amount,vendor,account_title,tax_category,description,document_id
 - 対象：`documents.status = confirmed` かつ 指定期間内の entries。
 - チェック内容：
   1. **ステータス混入**：`draft` / `in_review` の entries が含まれていないか（ある場合は document ごとにエラー表示）。
-  2. **必須列欠落**：`date`,`amount`,`vendor`,`account_title`,`tax_category` が空の行を検出。
-  3. **金額整合**：entries の `amount` 合計が documents の `sum_amount` と一致するか。ズレた場合は差額を表示し、エクスポート不可。
+  2. **必須列欠落**：`date`,`amount_in/out`,`vendor`,`account_title`,`tax_category` が空の行を検出。
+  3. **金額整合**：entries の `amount_in + amount_out` が documents の集計と一致するか。ズレた場合は差額を表示し、エクスポート不可。
   4. **文字数制限**：`vendor` 50 文字超、`description` 100 文字超を検出し、自動トリム or ユーザー修正を要求。
   5. **tax_category 変換**：`reduced_8` 以外で軽減税率フラグが立っていないか、サポート外値が混入していないか。
   6. **日付範囲**：指定期間外の取引が混入していないか。特に `date` がフィルタ条件外なら警告。
 - 結果表示：
   - `/export` の結果カードに「整合性 OK」または「× エラー n 件」のリストを表示。
   - エラー行には document / entry のリンクを付け、修正画面へ遷移できるようにする。
-- 実装方針：Next.js Route Handler 内で検証ロジックを共通化（`app/modules/bookkeeping/application/exportValidators.ts`）。Supabase RPC 側でも最低限のチェック（ステータス一致、NULL 禁止）を行い二重防御する。
+- 実装方針：Next.js Route Handler 内で検証ロジックを共通化（`app/modules/bookkeeping/application/export-validators.ts`）。Supabase RPC 側でも最低限のチェック（ステータス一致、NULL 禁止）を行い二重防御する。
 
 ### エラー通知 UX（B2-03）
 - **通知経路**：
@@ -574,6 +575,16 @@ date,amount,vendor,account_title,tax_category,description,document_id
    - 摘要の文字化けがないか（UTF-8/SJIS 変換）
    - 軽減税率フラグが `reduced_8` の行でのみ ON になるか
    - ヘッダー無し CSV で正常に取り込めるか（ヘッダー付きは弥生が拒否するため）
+
+#### リハーサル結果（2024-11-20 時点）
+- Supabase で作成した confirmed ドキュメント 1 件（entries 1 行：`2025-11-15, amount_out=1200, vendor=テストショップA, account_title=消耗品費, tax_category=standard_10`）を対象に `/export` から CSV を出力。
+- 出力ファイルはヘッダーなし `date,amount_in,amount_out,vendor,account_title,tax_category,description,document_id` 順で 1 行のみを出力。
+- 弥生白色申告オンライン Studio の「スマート取引取込 → CSVファイル取込」にて以下を操作：
+  1. ファイル選択 → プレビュー。
+  2. 項目選択画面で `date` = 日付（年月日）、`amount_in` = 金額（入金）、`amount_out` = 金額（出金）、`vendor` = 摘要 に割り当て。今回のテスト行は `standard_10` のみだったため `tax_category` は割り当てずに進め、後続タスクで `reduced_8` 行を追加して確認予定。
+  3. プレビューで金額が出金として表示され、文字化けなし。
+  4. 取込実行 → 取込履歴で成功ステータス、取引一覧にも反映を確認。
+- この結果をもって「ヘッダー無し + amount_in/amount_out 分離ファイル」で弥生側インポートが通ることを確認済み。
 4. **フィードバック反映**
    - エラーや注意点は README の B1/B2 セクションへ追記
    - 弥生 UI のスクリーンショットを取得し、手順書作成（B3-02 で活用）
@@ -591,6 +602,12 @@ date,amount,vendor,account_title,tax_category,description,document_id
    - `軽減税率` = `tax_category`（`reduced_8` を対象に）
 5. プレビュー画面でデータを確認し、問題なければ「取込」実行。
 6. 取り込んだ取引を「取引一覧」で確認し、必要に応じて弥生側で仕訳に変換。
+
+#### リハーサルで得られた注意事項
+- 「CSV にヘッダー行が含まれている」場合はアップロード時点でエラーになるため、本番ダウンロードは必ずヘッダー無しを維持する。
+- 軽減税率列は、今回のテストでは標準税率のみだったため未割当で進めた。`reduced_8` の実データを登録した上で、列を割り当てた際に「対象」が正しく付与されるかを次フェーズで再確認する。
+- 金額は正の整数で出力され、弥生側で入金/出金どちらに割り当てるかは列選択に依存する。`amount_in` と `amount_out` を同時に設定すると、弥生が二重計上するため必ず片方のみ入力する。（アプリ側はバリデータで片方 0 を保証）
+- 取込後に `document_id` は弥生には表示されないため、再取込回避はアプリ側でダウンロード履歴を管理して対応する。
 
 #### 落とし穴 / 注意点メモ
 - **文字コード**：弥生は Shift_JIS でも受け付けるが、本アプリは UTF-8 を出力。弥生側で文字化けが発生した場合は UTF-8 を前提としている旨を手順書に明記し、必要なら Shift_JIS 変換オプションを追加検討。
@@ -632,6 +649,7 @@ app/
 - Playwright による Amazon / Rakuten 自動ダウンロード
 - 適格請求書（インボイス番号）チェック
 - CSVの自動アップロード
+- Supabase Edge Functions / ワーカーによる PDF 解析パイプライン（PDF → テキスト抽出 → ハイライト情報保存）
 
 ## ✔️ 今後の進め方
 1. **ワークフローを2段階で整理する**：
@@ -676,6 +694,48 @@ app/
 #### Phase B 実装ステップ
 - [x] **B-実装-01** 弥生 CSV の正式仕様（文字コード、ヘッダー、列マッピング）を Studio テスト結果で検証し、README を確定させる。
 - [x] **B-実装-02** `/export` の CSV 出力ロジックを求められた列順・文字コード（UTF-8 or Shift_JIS）でファイルダウンロードできるよう実装する。
-- [ ] **B-実装-03** CSV 出力前の整合性チェックを RLS/DBレベルの検証結果と同期させ、UI に詳細エラーを表示する。
-- [ ] **B-実装-04** 取込リハーサル結果を README に反映し、弥生への操作手順・注意点を手順書にまとめる。
-- [ ] **B-実装-05** Phase B の受け入れ確認（弥生への実データ取込、README/コード一貫性チェック）を完了する。
+- [x] **B-実装-03** CSV 出力前の整合性チェックを RLS/DBレベルの検証結果と同期させ、UI に詳細エラーを表示する。
+- [x] **B-実装-04** 取込リハーサル結果を README に反映し、弥生への操作手順・注意点を手順書にまとめる。
+- [x] **B-実装-05** Phase B の受け入れ確認（弥生への実データ取込、README/コード一貫性チェック）を完了する。
+
+### Phase C（PDF解析 / OCR）タスク案
+- [x] **C1-01 技術調査** — pdf.js / Tesseract / Vision API などの抽出精度・コスト・実装方法を比較し、README に要件をまとめる。
+- [x] **C1-02 アーキテクチャ設計** — アップロード後に Edge Function / Queue で非同期解析するフロー、リトライや失敗時の通知を文章化。
+- [ ] **C1-03 スキーマ拡張** — `documents` に `analysis_status`, `analysis_payload`、`document_texts` テーブル等を追加する設計案を記載。
+- [ ] **C2-01 PDFテキスト抽出 PoC** — pdf.js + Next.js Route Handler でテキスト抽出し、`documents` に保存するモックを実装。
+- [ ] **C2-02 OCR PoC** — 画像領収書に対し Tesseract もしくは Vision API を呼び、ログ/サンプル結果を README に掲載。
+- [ ] **C2-03 セキュリティ/コスト評価** — API キー管理、外部送信の個人情報リスク、処理コスト見積もりをまとめる。
+- [ ] **C3-01 UI統合** — `/documents/[id]` に解析結果カード（テキスト原文・推定日付/金額等）を表示し、クリックで入力フィールドに反映できる UX を設計。
+- [ ] **C3-02 オペレーション設計** — 解析ジョブの再実行、手動上書きとの整合性、トレースログ/監査ログを README へ記載。
+#### C1-01 調査結果メモ
+- **pdf.js (Mozilla)**: OSSで実装可能、Next.js Route Handler / Edge Functionで動く。テキストレイヤー抽出に適する一方、画像ベースPDFは非対応。まずは pdf.js を優先採用し、抽出失敗時のみOCRにフォールバックする方針。
+- **Tesseract OCR**: 無料だがWASM版は処理が重く、日本語精度は前処理依存。将来的にスキャン領収書対応に使う可能性があるが Phase C 初期では採用しない。
+- **Vision API / Textract**: 高精度だがコストと個人情報送信の同意が必要。PDF解析の精度要件が上がった段階で採用検討。
+- **基本方針**: 「まず pdf.js でテキスト抽出 → 正規表現で日付/金額/ショップを候補化」。抽出できない場合に備えて C2-02 で OCR PoC を準備しつつ、実運用は pdf.js が主役。
+
+#### C1-02 アーキテクチャ設計（pdf.js 非同期解析）
+1. **イベント起点**
+   - `/documents` で PDF をアップロード → Supabase Storage `receipt-documents` にファイル保存 → `documents` レコード作成（`status=draft`）。
+   - Storage の `objects.insert` をトリガーに Supabase Edge Function を起動し、解析ジョブを `document_analysis_jobs` テーブルへ `pending` で登録。
+
+2. **解析ジョブ実行**
+   - Edge Function がジョブを `processing` に更新し、Storage から PDF をダウンロード。
+   - pdf.js（Node 版）でページ単位にテキストを抽出し、`document_texts`（`document_id`, `page`, `content`, `confidence`, `created_at`）へ保存。
+   - 正規表現で推定 `date` / `amount_out` / `vendor` / `order_id` を抽出し、`documents.analysis_payload`（JSONB）に格納。
+   - 正常完了で `analysis_status=completed`、ジョブは `completed` に更新。失敗時は `analysis_status=failed` にして `last_error` を保持。
+
+3. **再実行・リトライ**
+   - ジョブは最大 3 回まで自動リトライ。超過した場合は `failed` で固定し、UI に「再解析」ボタンを表示して新しいジョブを作成。
+   - 解析処理のタイムアウト（例: 60 秒）を超える大型PDFは `timeout` 理由を記録し、ユーザーに分割アップロードを促すメッセージを表示。
+
+4. **UI 連携**
+   - `/documents/[id]` で `analysis_status` を確認し、`processing` 中はスピナー表示、`completed` で「解析結果」カードを表示。
+   - カードにはページ別テキストの抜粋と推定フィールドを一覧表示し、クリックすると対象入力欄に反映（Undo 可）。
+
+5. **セキュリティ / 監査**
+   - Edge Function には Service Role Key ではなく Function 秘密鍵を使用し、Storage からダウンロードしたPDFは処理後すぐ破棄。
+   - `document_analysis_jobs` に `duration_ms`, `pages_processed` を記録し、監査ログ（Supabase Logflare 等）へも送信。個人情報を外部サービスへ送信しないため、privacy ガイドラインは Supabase 内完結で済む。
+
+6. **将来拡張ポイント**
+   - 同じ `document_analysis_jobs` インターフェースで OCR 実装（Tesseract / Vision API）へ差し替え可。`analysis_engine` カラムを追加し、ヘキサゴナルパターンで `PdfTextExtractor` インターフェースを切り替える。
+   - `analysis_payload` にはハイライト位置情報（座標）を保存できる余地を残し、将来的な「PDFプレビュー + ハイライト」への受け渡しを容易にする。

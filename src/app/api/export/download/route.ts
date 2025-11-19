@@ -10,18 +10,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '期間（from/to）を指定してください' }, { status: 400 });
   }
 
-  const { csv, issues } = await generateCsvDraft({ from, to }, { includeHeader: false });
+  try {
+    const { csv, issues } = await generateCsvDraft({ from, to }, { includeHeader: false });
 
-  if (issues.length > 0) {
-    return NextResponse.json({ error: '整合性チェックに失敗しました', issues }, { status: 400 });
+    if (issues.length > 0) {
+      return NextResponse.json({ error: '整合性チェックに失敗しました', issues }, { status: 400 });
+    }
+
+    const buffer = encodeShiftJIS(csv);
+    const uint8array = Uint8Array.from(buffer);
+    return new NextResponse(uint8array.buffer, {
+      headers: {
+        'Content-Type': 'text/csv; charset=Shift_JIS',
+        'Content-Disposition': `attachment; filename="entries_${from}_${to}.csv"`,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'CSV ダウンロードに失敗しました';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  const buffer = encodeShiftJIS(csv);
-  const uint8array = Uint8Array.from(buffer);
-  return new NextResponse(uint8array.buffer, {
-    headers: {
-      'Content-Type': 'text/csv; charset=Shift_JIS',
-      'Content-Disposition': `attachment; filename="entries_${from}_${to}.csv"`,
-    },
-  });
 }

@@ -25,3 +25,22 @@ export interface Document {
   note?: string;
   entries: Entry[];
 }
+
+export type ExportIssueCode =
+  | 'document_status'
+  | 'missing_field'
+  | 'invalid_date'
+  | 'date_out_of_range'
+  | 'amount_zero'
+  | 'length_over'
+  | 'invalid_tax_category';
+
+export interface ExportIssue {
+  code: ExportIssueCode;
+  severity: 'error' | 'warning';
+  message: string;
+  documentId: string;
+  documentName: string;
+  entryId?: string;
+  field?: string;
+}

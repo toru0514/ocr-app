@@ -9,6 +9,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '期間（from/to）を指定してください' }, { status: 400 });
   }
 
-  const result = await generateCsvDraft({ from, to });
-  return NextResponse.json(result);
+  try {
+    const result = await generateCsvDraft({ from, to });
+    return NextResponse.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'CSV 生成に失敗しました';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }
